@@ -1,0 +1,18 @@
+{"timeout":10,"poolsize":20,"urls":
+	[
+	{"id":"1","value":"https://medium.com/@thuc/8-notes-about-strings-builder-in-golang-65260daae6e9","feeds":
+							[
+							{"id":"1","limit":"10"},
+							{"id":"2","limit":"100"},
+							{"id":"3","limit":"150"}
+							]
+	},
+	{"id":"2","value":"https://awesome-go.com/","feeds":
+							[
+							{"id":"1","limit":"15"},
+							{"id":"2","limit":"20"},
+							{"id":"3","limit":"30"}
+							]
+	}
+	]
+}

@@ -1,0 +1,6 @@
+log:
+  file:  ./multiplexer.log
+api:
+  httpport:  4444
+urlrepo:
+  path:  config\urls.json
