@@ -1,4 +1,9 @@
 # Fanouter
+<<<<<<< HEAD
+=======
+[![Build Status](https://travis-ci.com/shipa988/fanouter.svg?branch=master)](https://travis-ci.com/shipa988/fanouter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/shipa988/fanouter)](https://goreportcard.com/report/github.com/shipa988/fanouter)
+>>>>>>> 0ed0c24dc0cdaa54b3acc86802ceb6f47925181e
 
 service for qps limiting and fanouting
 
