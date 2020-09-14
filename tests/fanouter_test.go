@@ -26,11 +26,15 @@ const (
 	limit  = 50
 )
 
+type ServerCheck struct {
+	server       httptest.Server
+	queriesCount int32
+}
+
 type Suite struct {
 	suite.Suite
-	server       *httptest.Server
-	fanOuter     *fanouter.FanoutInteractor
-	queriesCount int32
+	servers  []*ServerCheck
+	fanOuter *fanouter.FanoutInteractor
 }
 
 func TestFanOut(t *testing.T) {
@@ -39,29 +43,37 @@ func TestFanOut(t *testing.T) {
 }
 
 func (s *Suite) SetupSuite() {
-	s.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
-		require.Nil(s.T(), err)
+	for i := 0; i < 10; i++ {
+		servCh := ServerCheck{}
+		servCh.server = *httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			b, err := ioutil.ReadAll(r.Body)
+			require.Nil(s.T(), err)
 
-		if string(b) == feedID {
-			atomic.AddInt32(&s.queriesCount, 1)
-		}
-	}))
+			if string(b) == feedID {
+				atomic.AddInt32(&servCh.queriesCount, 1)
+			}
+		}))
+		s.servers = append(s.servers, &servCh)
+	}
+	urls := []string{}
+	for _, s := range s.servers {
+		urls = append(urls, s.server.URL)
+	}
 
-	logger := mocks.NewMockLogger()                           //for logging
-	urlRepo := mocks.NewMockRepo(s.server.URL, feedID, limit) //for loading fanout parameters
-	senderFabric := controllers.NewHTTPClientFabric()         //senders creating inside fanOuter
-	qpsLimiterFabric := limiter.NewCLimiterFabric()           //limiters creating inside fanOuter
+	logger := mocks.NewMockLogger()                   //for logging
+	urlRepo := mocks.NewMockRepo(urls, feedID, limit) //for loading fanout parameters
+	senderFabric := controllers.NewHTTPClientFabric() //senders creating inside fanOuter
+	qpsLimiterFabric := limiter.NewCLimiterFabric()   //limiters creating inside fanOuter
 
 	s.fanOuter = fanouter.NewFanoutInteractor(urlRepo, senderFabric, qpsLimiterFabric, logger)
 	s.AfterTest("", "")
 }
-func (s *Suite) TearDownSuite() {
-	s.server.Close()
-}
 
 func (s *Suite) AfterTest(_, _ string) {
-	atomic.StoreInt32(&s.queriesCount, 0)
+	for _, serverch := range s.servers {
+		atomic.StoreInt32(&serverch.queriesCount, 0)
+	}
+
 }
 
 func (s *Suite) TestClient() {
@@ -112,7 +124,7 @@ func (s *Suite) TestClient() {
 
 			//QPS measuring
 			go func() {
-				var receivedQueries int32 = 0
+				m := make(map[string]int32)
 				QPSTicker := time.NewTicker(time.Second)
 				for {
 					select {
@@ -124,13 +136,17 @@ func (s *Suite) TestClient() {
 					case <-ctx.Done():
 						return
 					case <-QPSTicker.C:
-						newReceivedQueries := atomic.LoadInt32(&s.queriesCount)
-						delta := newReceivedQueries - receivedQueries
-						if delta != 0 {
-							require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.9, "qps should be greater or equal then (limit - delta 10%)")
-							require.LessOrEqualf(s.T(), float32(delta), float32(limit)*1.02, "qps should be less or equal then (limit + delta 2%)") //error during measurement, not during main work
+						for _, serverch := range s.servers {
+							newReceivedQueries := atomic.LoadInt32(&serverch.queriesCount)
+							m[serverch.server.URL] = newReceivedQueries
+							delta := newReceivedQueries - m[serverch.server.URL]
+							if delta != 0 {
+								require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.9, "qps should be greater or equal then (limit - delta 10%)")
+								require.LessOrEqualf(s.T(), float32(delta), float32(limit)*1.02, "qps should be less or equal then (limit + delta 2%)") //error during measurement, not during main work
+							}
+							m[serverch.server.URL] = newReceivedQueries
 						}
-						receivedQueries = newReceivedQueries
+
 					default:
 					}
 				}
@@ -154,14 +170,18 @@ func (s *Suite) TestClient() {
 			}
 			cancel()
 
-			receivedQueries := atomic.LoadInt32(&s.queriesCount) //get received queries count before test duration
-			if tcase.outMaxQueriesCount == 0 {
-				require.Equal(s.T(), tcase.outMaxQueriesCount, receivedQueries)
-			} else {
-				require.GreaterOrEqualf(s.T(), receivedQueries, int32(float32(tcase.outMaxQueriesCount)*0.99), "99% (qps limit*duration) receivedQueries should be received by server")
-				require.LessOrEqualf(s.T(), receivedQueries, int32(tcase.outMaxQueriesCount), "received receivedQueries count should be less or equal then limit*duration")
+			for _, serverch := range s.servers {
+				receivedQueries := atomic.LoadInt32(&serverch.queriesCount) //get received queries count before test
+				if tcase.outMaxQueriesCount == 0 {
+					require.Equal(s.T(), tcase.outMaxQueriesCount, receivedQueries)
+				} else {
+					require.GreaterOrEqualf(s.T(), receivedQueries, int32(float32(tcase.outMaxQueriesCount)*0.99), "99% (qps limit*duration) receivedQueries should be received by server")
+					require.LessOrEqualf(s.T(), receivedQueries, int32(tcase.outMaxQueriesCount), "received receivedQueries count should be less or equal then limit*duration")
+				}
 			}
 		})
-		atomic.StoreInt32(&s.queriesCount, 0)
+		for _, serverch := range s.servers {
+			atomic.StoreInt32(&serverch.queriesCount, 0)
+		}
 	}
 }
