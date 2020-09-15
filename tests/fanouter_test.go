@@ -52,7 +52,6 @@ func TestFanOut(t *testing.T) {
 }
 
 func (s *Suite) SetupSuite() {
-	//m:=&sync.Mutex{}
 	for i := 0; i < 10; i++ {
 		servCh := ServerCheck{}
 		servCh.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,40 +87,40 @@ func (s *Suite) AfterTest(_, _ string) {
 
 func (s *Suite) TestClient() {
 	tcases := []struct {
-		name               string
-		feedID             string
-		inQueriesCount     int
-		limit              int
-		duration           int
-		outMaxQueriesCount int32
-		err                bool
+		name                       string
+		feedID                     string
+		OutgoingRequestCount       int
+		limit                      int
+		duration                   int
+		ServerIncomingRequestCount int32
+		err                        bool
 	}{
 		{
-			name:               "good simple: a small number of incoming requests (inQueriesCount*limit = outMaxQueriesCount)",
-			feedID:             feedID,
-			inQueriesCount:     5,
-			limit:              limit,
-			duration:           5,
-			outMaxQueriesCount: 5 * limit,
-			err:                false,
+			name:                       "good simple: a small number of outgoing requests (OutgoingRequestCount=limit*duration<=ServerIncomingRequestCount)",
+			feedID:                     feedID,
+			OutgoingRequestCount:       5 * limit,
+			limit:                      limit,
+			duration:                   5,
+			ServerIncomingRequestCount: 5 * limit,
+			err:                        false,
 		},
 		{
-			name:               "good hard: a large number of incoming requests (inQueriesCount*limit > outMaxQueriesCount)",
-			feedID:             feedID,
-			inQueriesCount:     100,
-			limit:              limit,
-			duration:           5,
-			outMaxQueriesCount: 5 * limit,
-			err:                false,
+			name:                       "good hard: a large number of outgoing requests (OutgoingRequestCount>limit*duration<= ServerIncomingRequestCount)",
+			feedID:                     feedID,
+			OutgoingRequestCount:       20 * limit,
+			limit:                      limit,
+			duration:                   5,
+			ServerIncomingRequestCount: 5 * limit,
+			err:                        false,
 		},
 		{
-			name:               "id not in params",
-			feedID:             "5",
-			inQueriesCount:     5,
-			limit:              limit,
-			duration:           5,
-			outMaxQueriesCount: 0,
-			err:                true,
+			name:                       "id not in params",
+			feedID:                     "5",
+			OutgoingRequestCount:       5,
+			limit:                      limit,
+			duration:                   5,
+			ServerIncomingRequestCount: 0,
+			err:                        true,
 		},
 	}
 
@@ -163,9 +162,9 @@ func (s *Suite) TestClient() {
 			}()
 
 			//ALL received Queries measuring
-			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.inQueriesCount)*1000) * time.Millisecond)
+			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
 			for range transmitQueryTicker.C {
-				if count >= tcase.inQueriesCount {
+				if count >= tcase.OutgoingRequestCount {
 					transmitQueryTicker.Stop()
 					break
 				}
@@ -179,14 +178,17 @@ func (s *Suite) TestClient() {
 				}
 			}
 			cancel()
-
 			for _, serverch := range s.servers {
+				serverch.server.CloseClientConnections()
+			}
+			for i, serverch := range s.servers {
 				receivedQueries :=serverch.GetLimit() //get received queries count before test
-				if tcase.outMaxQueriesCount == 0 {
-					require.Equal(s.T(), tcase.outMaxQueriesCount, receivedQueries)
+				fmt.Printf("server #%v - outgoing request count=%v, incoming request count=%v\n",i,tcase.OutgoingRequestCount,receivedQueries)
+				if tcase.ServerIncomingRequestCount == 0 {
+					require.Equal(s.T(), tcase.ServerIncomingRequestCount, receivedQueries)
 				} else {
-					require.GreaterOrEqualf(s.T(), receivedQueries, int32(float32(tcase.outMaxQueriesCount)*0.99), "99% (qps limit*duration) receivedQueries should be received by server")
-					require.LessOrEqualf(s.T(), receivedQueries, int32(tcase.outMaxQueriesCount), "received receivedQueries count should be less or equal then limit*duration")
+					require.GreaterOrEqualf(s.T(), receivedQueries, int32(float32(tcase.ServerIncomingRequestCount)*0.99), "99% (qps limit*duration) requests should be received by server")
+					require.LessOrEqualf(s.T(), receivedQueries, int32(tcase.ServerIncomingRequestCount), "received queries count should be less or equal then limit*duration")
 				}
 			}
 		})

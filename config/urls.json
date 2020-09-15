@@ -1,18 +1,186 @@
-{"timeout":10,"poolsize":20,"urls":
-	[
-	{"id":"1","value":"https://medium.com/@thuc/8-notes-about-strings-builder-in-golang-65260daae6e9","feeds":
-							[
-							{"id":"1","limit":"10"},
-							{"id":"2","limit":"100"},
-							{"id":"3","limit":"150"}
-							]
-	},
-	{"id":"2","value":"https://awesome-go.com/","feeds":
-							[
-							{"id":"1","limit":"15"},
-							{"id":"2","limit":"20"},
-							{"id":"3","limit":"30"}
-							]
-	}
-	]
+{
+  "timeout": 10,
+  "poolsize": 20,
+  "urls": [
+    {
+      "id": "1",
+      "value": "https://medium.com/@thuc/8-notes-about-strings-builder-in-golang-65260daae6e9",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "10"
+        },
+        {
+          "id": "2",
+          "limit": "100"
+        },
+        {
+          "id": "3",
+          "limit": "150"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "value": "https://awesome-go.com/",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "value": "https://github.com/uber-go/guide/blob/master/style.md",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "value": "https://github.com/cristaloleg/go-advice",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "value": "https://www.programming-books.io/essential/go/",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "value": "https://github.com/dgryski/go-perfbook",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "value": "https://vk.com/proglib/golang",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "value": "https://github.com/golang/go/wiki/LearnConcurrency",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "value": "https://techrocks.ru/2019/10/29/12-books-for-golang-learning/",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "value": "https://go-proverbs.github.io/",
+      "feeds": [
+        {
+          "id": "1",
+          "limit": "15"
+        },
+        {
+          "id": "2",
+          "limit": "20"
+        },
+        {
+          "id": "3",
+          "limit": "30"
+        }
+      ]
+    }
+  ]
 }

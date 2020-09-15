@@ -36,14 +36,11 @@ func (l *ChannelLimiter) DoLimiting(ctx context.Context, limit int) {
 				return
 			default:
 			}
-
-			for i := 0; i < limit; i++ {
-				select {
-				case <-ctx.Done():
-					return
-				case buffer <- s:
-				default:
-				}
+			select {
+			case <-ctx.Done():
+				return
+			case buffer <- s:
+			default:
 			}
 		}
 	}()
