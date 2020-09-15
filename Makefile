@@ -19,4 +19,4 @@ test:
 testv:
 	go test -v -race ./...
 testi:
-	go test -p 1 -v -race ./tests -tags=integration
+	go test -v -race ./tests -tags=integration
