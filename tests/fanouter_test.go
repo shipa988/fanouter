@@ -54,6 +54,7 @@ func TestFanOut(t *testing.T) {
 func (s *Suite) SetupSuite() {
 	for i := 0; i < 10; i++ {
 		servCh := ServerCheck{}
+		time.Sleep(time.Millisecond)
 		servCh.server = *httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			b, err := ioutil.ReadAll(r.Body)
 			require.Nil(s.T(), err)
