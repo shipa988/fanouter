@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,7 +27,7 @@ const (
 )
 
 type ServerCheck struct {
-	server       httptest.Server
+	server       *httptest.Server
 	queriesCount int32
 }
 
@@ -53,11 +52,10 @@ func TestFanOut(t *testing.T) {
 }
 
 func (s *Suite) SetupSuite() {
-	m:=&sync.Mutex{}
+	//m:=&sync.Mutex{}
 	for i := 0; i < 10; i++ {
-		m.Lock()
 		servCh := ServerCheck{}
-		servCh.server = *httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		servCh.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			b, err := ioutil.ReadAll(r.Body)
 			require.Nil(s.T(), err)
 
@@ -66,7 +64,6 @@ func (s *Suite) SetupSuite() {
 			}
 		}))
 		s.servers = append(s.servers, &servCh)
-		m.Unlock()
 	}
 
 	urls := []string{}
