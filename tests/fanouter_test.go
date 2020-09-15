@@ -147,7 +147,7 @@ func (s *Suite) TestClient() {
 							delta := newReceivedQueries - m[serverch.server.URL]
 							if delta != 0 {
 								fmt.Printf("server #%v - qps=%v\n",i,delta)
-								require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.9, "qps should be greater or equal then (limit - delta 10%)")
+								require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.85, "qps should be greater or equal then (limit - delta 15%)")
 								require.LessOrEqualf(s.T(), float32(delta), float32(limit)*1.02, "qps should be less or equal then (limit + delta 2%)") //error during measurement, not during main work
 							}
 							m[serverch.server.URL] = newReceivedQueries
@@ -184,7 +184,7 @@ func (s *Suite) TestClient() {
 				if tcase.ServerIncomingRequestCount == 0 {
 					require.Equal(s.T(), tcase.ServerIncomingRequestCount, receivedQueries)
 				} else {
-					require.GreaterOrEqualf(s.T(), receivedQueries, int32(float32(tcase.ServerIncomingRequestCount)*0.99), "99% (qps limit*duration) requests should be received by server")
+					require.GreaterOrEqualf(s.T(), receivedQueries, int32(float32(tcase.ServerIncomingRequestCount)*0.95), "95% (qps limit*duration) requests should be received by server")
 					require.LessOrEqualf(s.T(), receivedQueries, int32(tcase.ServerIncomingRequestCount), "received queries count should be less or equal then limit*duration")
 				}
 			}
