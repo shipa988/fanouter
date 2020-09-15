@@ -52,6 +52,7 @@ func TestFanOut(t *testing.T) {
 }
 
 func (s *Suite) SetupSuite() {
+	urls := []string{}
 	for i := 0; i < 10; i++ {
 		servCh := ServerCheck{}
 		servCh.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -63,11 +64,7 @@ func (s *Suite) SetupSuite() {
 			}
 		}))
 		s.servers = append(s.servers, &servCh)
-	}
-
-	urls := []string{}
-	for _, s := range s.servers {
-		urls = append(urls, s.server.URL)
+		urls = append(urls, servCh.server.URL)
 	}
 
 	logger := mocks.NewMockLogger()                   //for logging
@@ -145,11 +142,11 @@ func (s *Suite) TestClient() {
 					case <-ctx.Done():
 						return
 					case <-QPSTicker.C:
-						for _, serverch := range s.servers {
+						for i, serverch := range s.servers {
 							newReceivedQueries := serverch.GetLimit()
-							m[serverch.server.URL] = newReceivedQueries
 							delta := newReceivedQueries - m[serverch.server.URL]
 							if delta != 0 {
+								fmt.Printf("server #%v - qps=%v\n",i,delta)
 								require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.9, "qps should be greater or equal then (limit - delta 10%)")
 								require.LessOrEqualf(s.T(), float32(delta), float32(limit)*1.02, "qps should be less or equal then (limit + delta 2%)") //error during measurement, not during main work
 							}
