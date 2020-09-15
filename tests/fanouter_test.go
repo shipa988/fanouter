@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -52,9 +53,10 @@ func TestFanOut(t *testing.T) {
 }
 
 func (s *Suite) SetupSuite() {
+	m:=&sync.Mutex{}
 	for i := 0; i < 10; i++ {
+		m.Lock()
 		servCh := ServerCheck{}
-		time.Sleep(time.Millisecond)
 		servCh.server = *httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			b, err := ioutil.ReadAll(r.Body)
 			require.Nil(s.T(), err)
@@ -64,7 +66,9 @@ func (s *Suite) SetupSuite() {
 			}
 		}))
 		s.servers = append(s.servers, &servCh)
+		m.Unlock()
 	}
+
 	urls := []string{}
 	for _, s := range s.servers {
 		urls = append(urls, s.server.URL)
