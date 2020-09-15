@@ -31,6 +31,15 @@ type ServerCheck struct {
 	queriesCount int32
 }
 
+func (c *ServerCheck) AddLimit()  {
+	atomic.AddInt32(&c.queriesCount, 1)
+}
+func (c *ServerCheck) ClearLimit()  {
+	atomic.StoreInt32(&c.queriesCount, 0)
+}
+func (c *ServerCheck) GetLimit()int32  {
+	return atomic.LoadInt32(&c.queriesCount)
+}
 type Suite struct {
 	suite.Suite
 	servers  []*ServerCheck
@@ -50,7 +59,7 @@ func (s *Suite) SetupSuite() {
 			require.Nil(s.T(), err)
 
 			if string(b) == feedID {
-				atomic.AddInt32(&servCh.queriesCount, 1)
+				servCh.AddLimit()
 			}
 		}))
 		s.servers = append(s.servers, &servCh)
@@ -71,9 +80,8 @@ func (s *Suite) SetupSuite() {
 
 func (s *Suite) AfterTest(_, _ string) {
 	for _, serverch := range s.servers {
-		atomic.StoreInt32(&serverch.queriesCount, 0)
+		serverch.ClearLimit()
 	}
-
 }
 
 func (s *Suite) TestClient() {
@@ -137,7 +145,7 @@ func (s *Suite) TestClient() {
 						return
 					case <-QPSTicker.C:
 						for _, serverch := range s.servers {
-							newReceivedQueries := atomic.LoadInt32(&serverch.queriesCount)
+							newReceivedQueries := serverch.GetLimit()
 							m[serverch.server.URL] = newReceivedQueries
 							delta := newReceivedQueries - m[serverch.server.URL]
 							if delta != 0 {
@@ -171,7 +179,7 @@ func (s *Suite) TestClient() {
 			cancel()
 
 			for _, serverch := range s.servers {
-				receivedQueries := atomic.LoadInt32(&serverch.queriesCount) //get received queries count before test
+				receivedQueries :=serverch.GetLimit() //get received queries count before test
 				if tcase.outMaxQueriesCount == 0 {
 					require.Equal(s.T(), tcase.outMaxQueriesCount, receivedQueries)
 				} else {
@@ -181,7 +189,7 @@ func (s *Suite) TestClient() {
 			}
 		})
 		for _, serverch := range s.servers {
-			atomic.StoreInt32(&serverch.queriesCount, 0)
+			serverch.ClearLimit()
 		}
 	}
 }
