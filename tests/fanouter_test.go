@@ -105,7 +105,7 @@ func (s *Suite) TestClient() {
 		{
 			name:                       "good hard: a large number of outgoing requests (OutgoingRequestCount>limit*duration<= ServerIncomingRequestCount)",
 			feedID:                     feedID,
-			OutgoingRequestCount:       20 * limit,
+			OutgoingRequestCount:       10 * limit,
 			limit:                      limit,
 			duration:                   5,
 			ServerIncomingRequestCount: 5 * limit,
