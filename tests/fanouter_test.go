@@ -122,9 +122,9 @@ func (s *Suite) TestClient() {
 	}
 
 	for id, tcase := range tcases {
-		count := 0
+
 		s.Run(fmt.Sprintf("%d: %v", id, tcase.name), func() {
-			ctx, cancel := context.WithCancel(context.Background())
+						ctx, cancel := context.WithCancel(context.Background())
 			err := s.fanOuter.Init(ctx)
 			require.Nil(s.T(), err)
 
@@ -160,7 +160,18 @@ func (s *Suite) TestClient() {
 
 			//ALL received Queries measuring
 			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
-			for range transmitQueryTicker.C {
+
+			for i:=0;i<tcase.OutgoingRequestCount;i++{
+				fmt.Println(i)
+				<-transmitQueryTicker.C
+				err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
+				if tcase.err {
+					require.NotNil(s.T(), err)
+				} else {
+					require.Nil(s.T(), err)
+				}
+			}
+/*			for range transmitQueryTicker.C {
 				if count >= tcase.OutgoingRequestCount {
 					fmt.Println("transmitQueryTicker.Stop")
 					transmitQueryTicker.Stop()
@@ -174,7 +185,9 @@ func (s *Suite) TestClient() {
 				} else {
 					require.Nil(s.T(), err)
 				}
-			}
+			}*/
+			fmt.Println("transmitQueryTicker.Stop")
+			transmitQueryTicker.Stop()
 			cancel()
 			for _, serverch := range s.servers {
 				serverch.server.CloseClientConnections()
