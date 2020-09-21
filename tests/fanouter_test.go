@@ -31,15 +31,16 @@ type ServerCheck struct {
 	queriesCount int32
 }
 
-func (c *ServerCheck) AddLimit()  {
+func (c *ServerCheck) AddLimit() {
 	atomic.AddInt32(&c.queriesCount, 1)
 }
-func (c *ServerCheck) ClearLimit()  {
+func (c *ServerCheck) ClearLimit() {
 	atomic.StoreInt32(&c.queriesCount, 0)
 }
-func (c *ServerCheck) GetLimit()int32  {
+func (c *ServerCheck) GetLimit() int32 {
 	return atomic.LoadInt32(&c.queriesCount)
 }
+
 type Suite struct {
 	suite.Suite
 	servers  []*ServerCheck
@@ -124,7 +125,7 @@ func (s *Suite) TestClient() {
 	for id, tcase := range tcases {
 
 		s.Run(fmt.Sprintf("%d: %v", id, tcase.name), func() {
-						ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
 			err := s.fanOuter.Init(ctx)
 			require.Nil(s.T(), err)
 
@@ -141,12 +142,13 @@ func (s *Suite) TestClient() {
 					select {
 					case <-ctx.Done():
 						return
-					case <-QPSTicker.C:
+					case tt:=<-QPSTicker.C:
+						fmt.Println(tt)
 						for i, serverch := range s.servers {
 							newReceivedQueries := serverch.GetLimit()
 							delta := newReceivedQueries - m[serverch.server.URL]
 							if delta != 0 {
-								fmt.Printf("server #%v - qps=%v\n",i,delta)
+								fmt.Printf("server #%v - qps=%v\n", i, delta)
 								require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.85, "qps should be greater or equal then (limit - delta 15%)")
 								require.LessOrEqualf(s.T(), float32(delta), float32(limit)*1.1, "qps should be less or equal then (limit + delta 10%)") //error during measurement (CI), not during main work
 							}
@@ -160,9 +162,13 @@ func (s *Suite) TestClient() {
 
 			//ALL received Queries measuring
 			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
+			fmt.Println(tcase.duration)
+			fmt.Println(tcase.OutgoingRequestCount)
+			fmt.Printf("%v mls\n",float32(tcase.duration) / float32(tcase.OutgoingRequestCount) * 1000)
+			fmt.Println(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
 
-			for i:=0;i<tcase.OutgoingRequestCount;i++{
-				fmt.Println(i)
+			for i := 0; i < tcase.OutgoingRequestCount; i++ {
+				//	fmt.Println(i)
 				<-transmitQueryTicker.C
 				err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
 				if tcase.err {
@@ -171,21 +177,21 @@ func (s *Suite) TestClient() {
 					require.Nil(s.T(), err)
 				}
 			}
-/*			for range transmitQueryTicker.C {
-				if count >= tcase.OutgoingRequestCount {
-					fmt.Println("transmitQueryTicker.Stop")
-					transmitQueryTicker.Stop()
-					break
-				}
-				count++
+			/*			for range transmitQueryTicker.C {
+						if count >= tcase.OutgoingRequestCount {
+							fmt.Println("transmitQueryTicker.Stop")
+							transmitQueryTicker.Stop()
+							break
+						}
+						count++
 
-				err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
-				if tcase.err {
-					require.NotNil(s.T(), err)
-				} else {
-					require.Nil(s.T(), err)
-				}
-			}*/
+						err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
+						if tcase.err {
+							require.NotNil(s.T(), err)
+						} else {
+							require.Nil(s.T(), err)
+						}
+					}*/
 			fmt.Println("transmitQueryTicker.Stop")
 			transmitQueryTicker.Stop()
 			cancel()
@@ -193,8 +199,8 @@ func (s *Suite) TestClient() {
 				serverch.server.CloseClientConnections()
 			}
 			for i, serverch := range s.servers {
-				receivedQueries :=serverch.GetLimit() //get received queries count before test
-				fmt.Printf("server #%v - outgoing request count=%v, incoming request count=%v\n",i,tcase.OutgoingRequestCount,receivedQueries)
+				receivedQueries := serverch.GetLimit() //get received queries count before test
+				fmt.Printf("server #%v - outgoing request count=%v, incoming request count=%v\n", i, tcase.OutgoingRequestCount, receivedQueries)
 				if tcase.ServerIncomingRequestCount == 0 {
 					require.Equal(s.T(), tcase.ServerIncomingRequestCount, receivedQueries)
 				} else {
