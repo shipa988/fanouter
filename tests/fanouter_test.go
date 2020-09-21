@@ -162,6 +162,7 @@ func (s *Suite) TestClient() {
 			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
 			for range transmitQueryTicker.C {
 				if count >= tcase.OutgoingRequestCount {
+					fmt.Println("transmitQueryTicker.Stop")
 					transmitQueryTicker.Stop()
 					break
 				}
