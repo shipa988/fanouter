@@ -169,7 +169,8 @@ func (s *Suite) TestClient() {
 
 			for i := 0; i < tcase.OutgoingRequestCount; i++ {
 				//	fmt.Println(i)
-				<-transmitQueryTicker.C
+				tt:=<-transmitQueryTicker.C
+				fmt.Println(tt)
 				err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
 				if tcase.err {
 					require.NotNil(s.T(), err)
