@@ -26,6 +26,11 @@ const (
 	limit  = 50
 )
 
+var (
+	minQPS int32  = (1 << 31)-1
+	maxQPS int32 = 0
+)
+
 type ServerCheck struct {
 	server       *httptest.Server
 	queriesCount int32
@@ -125,7 +130,7 @@ func (s *Suite) TestClient() {
 	for id, tcase := range tcases {
 
 		s.Run(fmt.Sprintf("%d: %v", id, tcase.name), func() {
-			ctx,cancel:=context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
 			err := s.fanOuter.Init(ctx)
 			require.Nil(s.T(), err)
 			//QPS measuring
@@ -141,19 +146,22 @@ func (s *Suite) TestClient() {
 					select {
 					case <-ctx.Done():
 						return
-					case tt := <-QPSTicker.C:
-						fmt.Println(tt)
-						for i, serverch := range s.servers {
+					case <-QPSTicker.C:
+						for _, serverch := range s.servers {
 							newReceivedQueries := serverch.GetLimit()
 							delta := newReceivedQueries - m[serverch.server.URL]
 							if delta != 0 {
-								fmt.Printf("server #%v - qps=%v\n", i, delta)
+								if delta < minQPS {
+									minQPS = delta
+								}
+								if delta > maxQPS {
+									maxQPS = delta
+								}
 								require.GreaterOrEqualf(s.T(), float32(delta), float32(limit)*0.85, "qps should be greater or equal then (limit - delta 15%)")
 								require.LessOrEqualf(s.T(), float32(delta), float32(limit)*1.1, "qps should be less or equal then (limit + delta 10%)") //error during measurement (CI), not during main work
 							}
 							m[serverch.server.URL] = newReceivedQueries
 						}
-
 					default:
 					}
 				}
@@ -161,13 +169,10 @@ func (s *Suite) TestClient() {
 
 			//ALL received Queries measuring
 			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
-			fmt.Println(tcase.duration)
-			fmt.Println(tcase.OutgoingRequestCount)
-			fmt.Printf("%v mls\n", float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000)
-			fmt.Println(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
-			ct,_:=context.WithTimeout(ctx,time.Second*5)
-			send_loop:
-			for  {
+			ct, _ := context.WithTimeout(ctx, time.Second*5)
+			requests := 0
+		send_loop:
+			for {
 				select {
 				case <-ct.Done():
 					break send_loop
@@ -176,9 +181,9 @@ func (s *Suite) TestClient() {
 				select {
 				case <-ct.Done():
 					break send_loop
-				case tt := <-transmitQueryTicker.C:
-					fmt.Println(tt)
+				case <-transmitQueryTicker.C:
 					err := s.fanOuter.Fanout(ct, tcase.feedID) //fanout received query to external url
+					requests++
 					if tcase.err {
 						require.NotNil(s.T(), err)
 					} else {
@@ -186,7 +191,6 @@ func (s *Suite) TestClient() {
 					}
 				}
 			}
-			fmt.Println("transmitQueryTicker.Stop")
 			transmitQueryTicker.Stop()
 			cancel()
 			for _, serverch := range s.servers {
@@ -194,7 +198,7 @@ func (s *Suite) TestClient() {
 			}
 			for i, serverch := range s.servers {
 				receivedQueries := serverch.GetLimit() //get received queries count before test
-				fmt.Printf("server #%v - outgoing request count=%v, incoming request count=%v\n", i, tcase.OutgoingRequestCount, receivedQueries)
+				fmt.Printf("server #%v - outgoing request count=%v, incoming request count=%v\n", i, requests, receivedQueries)
 				if tcase.ServerIncomingRequestCount == 0 {
 					require.Equal(s.T(), tcase.ServerIncomingRequestCount, receivedQueries)
 				} else {
@@ -206,5 +210,8 @@ func (s *Suite) TestClient() {
 		for _, serverch := range s.servers {
 			serverch.ClearLimit()
 		}
+		fmt.Printf("minQPS=%v ; maxQPS=%v\n", minQPS, maxQPS)
+		minQPS = (1 << 31)-1
+		maxQPS = 0
 	}
 }
