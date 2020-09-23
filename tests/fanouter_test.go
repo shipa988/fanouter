@@ -105,7 +105,7 @@ func (s *Suite) TestClient() {
 		{
 			name:                       "good hard: a large number of outgoing requests (OutgoingRequestCount>limit*duration<= ServerIncomingRequestCount)",
 			feedID:                     feedID,
-			OutgoingRequestCount:       6 * limit,
+			OutgoingRequestCount:       20 * limit,
 			limit:                      limit,
 			duration:                   5,
 			ServerIncomingRequestCount: 5 * limit,
@@ -125,10 +125,9 @@ func (s *Suite) TestClient() {
 	for id, tcase := range tcases {
 
 		s.Run(fmt.Sprintf("%d: %v", id, tcase.name), func() {
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx,cancel:=context.WithCancel(context.Background())
 			err := s.fanOuter.Init(ctx)
 			require.Nil(s.T(), err)
-
 			//QPS measuring
 			go func() {
 				m := make(map[string]int32)
@@ -142,7 +141,7 @@ func (s *Suite) TestClient() {
 					select {
 					case <-ctx.Done():
 						return
-					case tt:=<-QPSTicker.C:
+					case tt := <-QPSTicker.C:
 						fmt.Println(tt)
 						for i, serverch := range s.servers {
 							newReceivedQueries := serverch.GetLimit()
@@ -164,35 +163,29 @@ func (s *Suite) TestClient() {
 			transmitQueryTicker := time.NewTicker(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
 			fmt.Println(tcase.duration)
 			fmt.Println(tcase.OutgoingRequestCount)
-			fmt.Printf("%v mls\n",float32(tcase.duration) / float32(tcase.OutgoingRequestCount) * 1000)
+			fmt.Printf("%v mls\n", float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000)
 			fmt.Println(time.Duration(float32(tcase.duration)/float32(tcase.OutgoingRequestCount)*1000) * time.Millisecond)
-
-			for i := 0; i < tcase.OutgoingRequestCount; i++ {
-				//	fmt.Println(i)
-				tt:=<-transmitQueryTicker.C
-				fmt.Println(tt)
-				err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
-				if tcase.err {
-					require.NotNil(s.T(), err)
-				} else {
-					require.Nil(s.T(), err)
+			ct,_:=context.WithTimeout(ctx,time.Second*5)
+			send_loop:
+			for  {
+				select {
+				case <-ct.Done():
+					break send_loop
+				default:
+				}
+				select {
+				case <-ct.Done():
+					break send_loop
+				case tt := <-transmitQueryTicker.C:
+					fmt.Println(tt)
+					err := s.fanOuter.Fanout(ct, tcase.feedID) //fanout received query to external url
+					if tcase.err {
+						require.NotNil(s.T(), err)
+					} else {
+						require.Nil(s.T(), err)
+					}
 				}
 			}
-			/*			for range transmitQueryTicker.C {
-						if count >= tcase.OutgoingRequestCount {
-							fmt.Println("transmitQueryTicker.Stop")
-							transmitQueryTicker.Stop()
-							break
-						}
-						count++
-
-						err := s.fanOuter.Fanout(context.Background(), tcase.feedID) //fanout received query to external url
-						if tcase.err {
-							require.NotNil(s.T(), err)
-						} else {
-							require.Nil(s.T(), err)
-						}
-					}*/
 			fmt.Println("transmitQueryTicker.Stop")
 			transmitQueryTicker.Stop()
 			cancel()
